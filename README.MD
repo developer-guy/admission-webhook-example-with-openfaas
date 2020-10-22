@@ -89,10 +89,11 @@ app.kubernetes.io/managed-by: kubernetes
 ```
 
 * Any Pod who have above labels is valid for us.
-
+```sh
 `./deployment/sleep.yaml` -> Incorrect, not-valid (We should deny this creation request.)
 `./deployment/sleep-no-validation.yaml` -> Skip-validation (Based on `admission-webhook-example.qikqiak.com/validate: "false"` annotation, we skipped validation.)
 `./deployment/sleep-with-labels.yaml` -> Correct, valid (We should accept this creation request.)
+```
 
 ## 6. References
 * https://appfleet.com/blog/create-serverless-functions-with-openfaas/
