@@ -3,6 +3,28 @@
 * OpenFaaS CLI
 * Arkade
 * Kubectl
+* KinD
+
+## 2. Setup Tools
+* Arkade
+```sh
+$ curl -sLS https://dl.get-arkade.dev | sudo sh
+```
+
+* KinD
+```sh
+$ arkade get kind
+```
+
+* Kubectl
+```sh
+$ arkade get kubectl
+```
+
+* OpenFaaS CLI
+```sh
+$ arkade get faas-cli
+```
 
 # Setup
 
@@ -23,18 +45,6 @@ nodes:
 
 ```bash
 $ kind create cluster --config kind-specs/kind-cluster.yaml
-```
-
-## 2. Setup Tools
-
-* OpenFaaS CLI
-```sh
-$ curl -sL https://cli.openfaas.com | sudo sh
-```
-
-* Arkade
-```sh
-$ curl -sLS https://dl.get-arkade.dev | sudo sh
 ```
 
 * Deploy OpenFaaS to a Kubernetes Cluster with:
