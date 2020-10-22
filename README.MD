@@ -1,4 +1,4 @@
-# Prerequisite
+# Prerequisites
 * A Kubernetes cluster (kind, minikube, etc.)
 * OpenFaaS CLI
 * Arkade
