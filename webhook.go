@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"net/http"
+	"os"
 )
 
 var (
@@ -42,18 +43,23 @@ func init() {
 func (whsvr *WebhookServer) validate(ar *v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	requestasBytes, _ := json.Marshal(ar.Request)
 	var admissionResponse v1beta1.AdmissionResponse
-	resp, err := http.Post("http://gateway.openfaas:8080/function/requiredlabel.openfaas-fn", "application/json", bytes.NewBuffer(requestasBytes))
+	functionName := os.Getenv("FUNCTION_NAME")
+	functionNamespace := os.Getenv("FUNCTION_NAMESPACE")
+	if functionNamespace == "" {
+		functionNamespace = "openfaas-fn"
+	}
+	resp, err := http.Post("http://gateway.openfaas:8080/function/"+functionName+"."+functionNamespace, "application/json", bytes.NewBuffer(requestasBytes))
 	if err != nil {
-		glog.Errorf("Error: %v",err)
+		glog.Errorf("Error: %v", err)
 	}
 	respAsBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		glog.Errorf("Error: %v",err)
+		glog.Errorf("Error: %v", err)
 	}
 	defer resp.Body.Close()
 	err = json.Unmarshal(respAsBytes, &admissionResponse)
 	if err != nil {
-		glog.Errorf("Error: %v",err)
+		glog.Errorf("Error: %v", err)
 	}
 	return &admissionResponse
 }

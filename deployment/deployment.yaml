@@ -19,6 +19,9 @@ spec:
         - name: admission-webhook-example
           image: devopps/admission-webhook-example:v1
           imagePullPolicy: Always
+          env:
+            - name: FUNCTION_NAME
+              value: requiredlabel
           args:
             - -tlsCertFile=/etc/webhook/certs/cert.pem
             - -tlsKeyFile=/etc/webhook/certs/key.pem
