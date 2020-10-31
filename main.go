@@ -5,10 +5,13 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"github.com/openfaas-incubator/connector-sdk/types"
+	"github.com/openfaas/faas-provider/auth"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/golang/glog"
 )
@@ -27,7 +30,21 @@ func main() {
 		glog.Errorf("Failed to load key pair: %v", err)
 	}
 
+	creds := &auth.BasicAuthCredentials{
+		User:     os.Getenv("BASIC_AUTH_USER"),
+		Password: os.Getenv("BASIC_AUTH_PASSWORD"),
+	}
+
+	config := &types.ControllerConfig{
+		RebuildInterval:   time.Millisecond * 1000,
+		GatewayURL:        os.Getenv("GATEWAY_ADDR"),
+	}
+
+	controller := types.NewController(creds, config)
+	controller.BeginMapBuilder()
+
 	whsvr := &WebhookServer{
+		controller: controller,
 		server: &http.Server{
 			Addr:      fmt.Sprintf(":%v", parameters.port),
 			TLSConfig: &tls.Config{Certificates: []tls.Certificate{pair}},

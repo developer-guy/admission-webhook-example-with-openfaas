@@ -70,7 +70,6 @@ func validationRequired(ignoredList []string, metadata *metav1.ObjectMeta) bool 
 
 func Handle(w http.ResponseWriter, r *http.Request) {
 	var (
-		response                        *v1beta1.AdmissionResponse
 		availableLabels                 map[string]string
 		objectMeta                      *metav1.ObjectMeta
 		resourceNamespace, resourceName string
@@ -86,21 +85,14 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		input = body
 	}
 
+	response := &v1beta1.AdmissionResponse{
+		Allowed: true,
+	}
+
 	var req v1beta1.AdmissionRequest
 	if err := json.Unmarshal(input, &req); err != nil {
-		response = &v1beta1.AdmissionResponse{
-			Allowed: false,
-			Result: &metav1.Status{
-				Message: err.Error(),
-			},
-		}
-		w.WriteHeader(http.StatusInternalServerError)
-		responseasBytes, _ := json.Marshal(response)
-		if _, err := w.Write(responseasBytes); err != nil {
-			log.Errorf("Can't write response: %v", err)
-			http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)
-		}
-		return
+		log.Errorf("Can't write response: %v", err)
+		http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)
 	}
 
 	log.Infof("AdmissionReview for Kind=%v, Namespace=%v Name=%v (%v) UID=%v patchOperation=%v UserInfo=%v",
@@ -111,13 +103,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		var pod corev1.Pod
 		if err := json.Unmarshal(req.Object.Raw, &pod); err != nil {
 			log.Errorf("Could not unmarshal raw object: %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			responseasBytes, _ := json.Marshal(response)
-			if _, err := w.Write(responseasBytes); err != nil {
-				log.Errorf("Can't write response: %v", err)
-				http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)
-			}
-			return
+			http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)
 		}
 		resourceName, resourceNamespace, objectMeta = pod.Name, pod.Namespace, &pod.ObjectMeta
 		availableLabels = pod.Labels
@@ -125,16 +111,13 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 
 	if !validationRequired(ignoredNamespaces, objectMeta) {
 		log.Infof("Skipping validation for %s/%s due to policy check", resourceNamespace, resourceName)
-		response = &v1beta1.AdmissionResponse{
-			Allowed: true,
-		}
 		w.WriteHeader(http.StatusOK)
-		responseasBytes, _ := json.Marshal(response)
-		if _, err := w.Write(responseasBytes); err != nil {
+		responseBytes, _ := json.Marshal(response)
+
+		if _, err := w.Write(responseBytes); err != nil {
 			log.Errorf("Can't write response: %v", err)
 			http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)
 		}
-		return
 	}
 
 	allowed := true
@@ -151,13 +134,11 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	response = &v1beta1.AdmissionResponse{
-		Allowed: allowed,
-		Result:  result,
-	}
+	response.Allowed = allowed
+	response.Result = result
 
-	responseasBytes, _ := json.Marshal(response)
-	if _, err := w.Write(responseasBytes); err != nil {
+	responseBytes, _ := json.Marshal(response)
+	if _, err := w.Write(responseBytes); err != nil {
 		log.Errorf("Can't write response: %v", err)
 		http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)
 	}

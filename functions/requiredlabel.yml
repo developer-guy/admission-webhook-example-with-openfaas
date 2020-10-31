@@ -9,4 +9,6 @@ functions:
     image: devopps/requiredlabel:latest
     build_args:
       GO111MODULE: on
+    annotations:
+      topic: requiredlabel
 

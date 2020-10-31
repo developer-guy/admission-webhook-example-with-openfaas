@@ -1,10 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/openfaas-incubator/connector-sdk/types"
 	"io/ioutil"
 	"k8s.io/api/admission/v1beta1"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"net/http"
 	"os"
+	"time"
 )
 
 var (
@@ -23,7 +24,8 @@ var (
 )
 
 type WebhookServer struct {
-	server *http.Server
+	server     *http.Server
+	controller types.Controller
 }
 
 // Webhook Server parameters
@@ -39,29 +41,60 @@ func init() {
 	_ = admissionregistrationv1beta1.AddToScheme(runtimeScheme)
 }
 
+// ResponseReceiver enables connector to receive results from the
+// function invocation
+type ResponseReceiver struct {
+	AdmissionResponse *v1beta1.AdmissionResponse
+}
+
+// Response is triggered by the controller when a message is
+// received from the function invocation
+func (r *ResponseReceiver) Response(res types.InvokerResponse) {
+	if res.Error != nil {
+		glog.Errorf("tester got error: %s", res.Error.Error())
+	} else {
+		glog.Infof("tester got result: [%d] %s => %s (%d) bytes", res.Status, res.Topic, res.Function, len(*res.Body))
+		var response v1beta1.AdmissionResponse
+		err := json.Unmarshal(*res.Body, &response)
+		if err != nil {
+			glog.Errorf("tester got error: %s", res.Error.Error())
+		}
+		r.AdmissionResponse = &response
+		glog.Infof("tester got result : allowed %t", r.AdmissionResponse.Allowed)
+	}
+}
+
 // validate deployments and services
-func (whsvr *WebhookServer) validate(ar *v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
-	requestasBytes, _ := json.Marshal(ar.Request)
-	var admissionResponse v1beta1.AdmissionResponse
-	functionName := os.Getenv("FUNCTION_NAME")
-	functionNamespace := os.Getenv("FUNCTION_NAMESPACE")
-	if functionNamespace == "" {
-		functionNamespace = "openfaas-fn"
-	}
-	resp, err := http.Post("http://gateway.openfaas:8080/function/"+functionName+"."+functionNamespace, "application/json", bytes.NewBuffer(requestasBytes))
+func (whsvr *WebhookServer) validate(ar *v1beta1.AdmissionReview) (*v1beta1.AdmissionResponse, error) {
+	requestBytes, err := json.Marshal(ar.Request)
 	if err != nil {
-		glog.Errorf("Error: %v", err)
+		return nil, err
 	}
-	respAsBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		glog.Errorf("Error: %v", err)
+
+	functionTopic := os.Getenv("FUNCTION_TOPIC")
+	glog.Infof("Function topic: %s", functionTopic)
+
+	receiver := ResponseReceiver{AdmissionResponse: nil}
+	whsvr.controller.Subscribe(&receiver)
+
+	attempt := 0
+	glog.Info("Invoking function")
+	for {
+		if attempt < 3 {
+			whsvr.controller.Invoke(functionTopic, &requestBytes)
+			if receiver.AdmissionResponse != nil {
+				glog.Info("AdmissionResponse is full, break")
+				break
+			}
+			glog.Info("AdmissionResponse is still nil, Invoking function again after 1sec")
+			time.Sleep(time.Second)
+		} else {
+			glog.Info("Tried 3 times, backed off")
+		}
+		attempt += 1
 	}
-	defer resp.Body.Close()
-	err = json.Unmarshal(respAsBytes, &admissionResponse)
-	if err != nil {
-		glog.Errorf("Error: %v", err)
-	}
-	return &admissionResponse
+
+	return receiver.AdmissionResponse, nil
 }
 
 // Serve method for webhook server
@@ -96,9 +129,16 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 	} else {
-		fmt.Println(r.URL.Path)
 		if r.URL.Path == "/validate" {
-			admissionResponse = whsvr.validate(&ar)
+			admissionResponse, err = whsvr.validate(&ar)
+			if err != nil {
+				glog.Errorf("Can't validate body: %v", err)
+				admissionResponse = &v1beta1.AdmissionResponse{
+					Result: &metav1.Status{
+						Message: err.Error(),
+					},
+				}
+			}
 		}
 	}
 

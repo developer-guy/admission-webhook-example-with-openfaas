@@ -4,6 +4,7 @@ metadata:
   name: admission-webhook-example-deployment
   labels:
     app: admission-webhook-example
+  namespace: openfaas
 spec:
   replicas: 1
   selector:
@@ -17,11 +18,23 @@ spec:
       serviceAccountName: admission-webhook-example-sa
       containers:
         - name: admission-webhook-example
-          image: devopps/admission-webhook-example:v1
-          imagePullPolicy: Always
+          image: devopps/admission-webhook-example:latest
+          imagePullPolicy: IfNotPresent
           env:
-            - name: FUNCTION_NAME
+            - name: FUNCTION_TOPIC
               value: requiredlabel
+            - name: GATEWAY_ADDR
+              value: http://gateway.openfaas:8080
+            - name: BASIC_AUTH_USER
+              valueFrom:
+                secretKeyRef:
+                  name: basic-auth
+                  key: basic-auth-user
+            - name: BASIC_AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: basic-auth
+                  key: basic-auth-password
           args:
             - -tlsCertFile=/etc/webhook/certs/cert.pem
             - -tlsKeyFile=/etc/webhook/certs/key.pem

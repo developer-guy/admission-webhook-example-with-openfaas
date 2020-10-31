@@ -1,6 +1,7 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
+  namespace: openfaas
   name: admission-webhook-example-sa
   labels:
     app: admission-webhook-example
@@ -52,7 +53,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: admission-webhook-example-sa
-  namespace: default
+  namespace: openfaas
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
