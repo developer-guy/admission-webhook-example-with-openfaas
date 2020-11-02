@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/openfaas-incubator/connector-sdk/types"
@@ -88,10 +89,10 @@ func (whsvr *WebhookServer) validate(ar *v1beta1.AdmissionReview) (*v1beta1.Admi
 			}
 			glog.Info("AdmissionResponse is still nil, Invoking function again after 1sec")
 			time.Sleep(time.Second)
+			attempt += 1
 		} else {
-			glog.Info("Tried 3 times, backed off")
+			return nil, errors.New("tried 3 times, backed off")
 		}
-		attempt += 1
 	}
 
 	return receiver.AdmissionResponse, nil
