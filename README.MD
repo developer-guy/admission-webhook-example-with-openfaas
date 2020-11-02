@@ -82,11 +82,21 @@ $ faas-cli up -f fileinjector.yml # (build-push-deploy) make sure you are using 
 
 * First, we need to create a configmap to be able to mount a file to the Pod:
 
+```sh
+$ cat functions/fileinjector/hello-openfaas.txt
+
+  _  _     _ _        ___                 ___          ___
+ | || |___| | |___   / _ \ _ __  ___ _ _ | __|_ _ __ _/ __|
+ | __ / -_) | / _ \ | (_) | '_ \/ -_) ' \| _/ _` / _` \__ \
+ |_||_\___|_|_\___/  \___/| .__/\___|_||_|_|\__,_\__,_|___/
+                          |_|
+```
+
 ```
 $ kubectl create hello-configmap --from-file=functions/fileinjector/hello-openfaas.txt
 ```
 
-* Now , you can apply the Pod manifest, once you done this , you will notice that Pod includes a volume + volumeMount additional to the manifest you wrote
+* Now , you can apply the Pod manifest, once you done, you will notice that Pod includes a volume + volumeMount additional to the manifest you wrote
 
 ```sh
 $ kubectl apply -f busybox.yaml
@@ -96,6 +106,12 @@ $ kubectl apply -f busybox.yaml
 
 ```sh
 $ kubectl logs -f busybox
+
+  _  _     _ _        ___                 ___          ___
+ | || |___| | |___   / _ \ _ __  ___ _ _ | __|_ _ __ _/ __|
+ | __ / -_) | / _ \ | (_) | '_ \/ -_) ' \| _/ _` / _` \__ \
+ |_||_\___|_|_\___/  \___/| .__/\___|_||_|_|\__,_\__,_|___/
+                          |_|
 ```
 
 ## 6. References
