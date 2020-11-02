@@ -1,7 +1,7 @@
 apiVersion: admissionregistration.k8s.io/v1beta1
-kind: ValidatingWebhookConfiguration
+kind: MutatingWebhookConfiguration
 metadata:
-  name: validation-webhook-example-cfg
+  name: mutating-webhook-example-cfg
   labels:
     app: admission-webhook-example
 webhooks:
@@ -10,7 +10,7 @@ webhooks:
       service:
         name: admission-webhook-example-svc
         namespace: default
-        path: "/validate"
+        path: "/mutate"
       caBundle: ${CA_BUNDLE}
     rules:
       - operations: [ "CREATE" ]

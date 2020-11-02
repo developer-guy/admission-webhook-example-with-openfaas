@@ -39,28 +39,35 @@ func init() {
 	_ = admissionregistrationv1beta1.AddToScheme(runtimeScheme)
 }
 
-// validate deployments and services
-func (whsvr *WebhookServer) validate(ar *v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
-	requestasBytes, _ := json.Marshal(ar.Request)
+// mutate deployments and services
+func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
+	requestBytes, _ := json.Marshal(ar.Request)
+
 	var admissionResponse v1beta1.AdmissionResponse
-	functionName := os.Getenv("FUNCTION_NAME")
-	functionNamespace := os.Getenv("FUNCTION_NAMESPACE")
+
+	functionName, functionNamespace := os.Getenv("FUNCTION_NAME"), os.Getenv("FUNCTION_NAMESPACE")
+
 	if functionNamespace == "" {
 		functionNamespace = "openfaas-fn"
 	}
-	resp, err := http.Post("http://gateway.openfaas:8080/function/"+functionName+"."+functionNamespace, "application/json", bytes.NewBuffer(requestasBytes))
+
+	resp, err := http.Post("http://gateway.openfaas:8080/function/"+functionName+"."+functionNamespace, "application/json", bytes.NewBuffer(requestBytes))
+
 	if err != nil {
 		glog.Errorf("Error: %v", err)
 	}
+
 	respAsBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		glog.Errorf("Error: %v", err)
 	}
+
 	defer resp.Body.Close()
-	err = json.Unmarshal(respAsBytes, &admissionResponse)
-	if err != nil {
+
+	if err := json.Unmarshal(respAsBytes, &admissionResponse); err != nil {
 		glog.Errorf("Error: %v", err)
 	}
+
 	return &admissionResponse
 }
 
@@ -96,9 +103,8 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 	} else {
-		fmt.Println(r.URL.Path)
-		if r.URL.Path == "/validate" {
-			admissionResponse = whsvr.validate(&ar)
+		if r.URL.Path == "/mutate" {
+			admissionResponse = whsvr.mutate(&ar)
 		}
 	}
 
@@ -115,7 +121,7 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 		glog.Errorf("Can't encode response: %v", err)
 		http.Error(w, fmt.Sprintf("could not encode response: %v", err), http.StatusInternalServerError)
 	}
-	glog.Infof("Ready to write reponse ...")
+	glog.Infof("Ready to write reponse ... %+v", admissionResponse)
 	if _, err := w.Write(resp); err != nil {
 		glog.Errorf("Can't write response: %v", err)
 		http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)

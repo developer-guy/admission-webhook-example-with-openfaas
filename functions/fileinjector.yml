@@ -3,10 +3,10 @@ provider:
   name: openfaas
   gateway: http://127.0.0.1:8080
 functions:
-  requiredlabel:
+  fileinjector:
     lang: golang-middleware
-    handler: ./requiredlabel
-    image: devopps/requiredlabel:latest
+    handler: ./fileinjector
+    image: devopps/fileinjector:v1
     build_args:
       GO111MODULE: on
 

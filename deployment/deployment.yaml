@@ -17,11 +17,11 @@ spec:
       serviceAccountName: admission-webhook-example-sa
       containers:
         - name: admission-webhook-example
-          image: devopps/admission-webhook-example:v1
-          imagePullPolicy: Always
+          image: devopps/admission-webhook-example:v3
+          imagePullPolicy: IfNotPresent
           env:
             - name: FUNCTION_NAME
-              value: requiredlabel
+              value:  fileinjector
           args:
             - -tlsCertFile=/etc/webhook/certs/cert.pem
             - -tlsKeyFile=/etc/webhook/certs/key.pem
