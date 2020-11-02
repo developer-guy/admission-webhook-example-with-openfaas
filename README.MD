@@ -71,6 +71,8 @@ $ cd deployment
 $ kubectl apply -f rbac.yaml
 $ kubectl apply -f service.yaml
 $ kubectl apply -f deployment.yaml # make sure you are using same 'DOCKER_USER' in deployment.yaml. i.e: devopps
+# Label the default namespace to enable the webhook
+$ kubectl label namespaces default admission-webhook-example=enabled
 ```
 
 ## 4. Building OpenFaaS Function
@@ -84,7 +86,7 @@ $ faas-cli up -f requiredlabel.yml # (build-push-deploy) make sure you are using
 
 ## 5. Testing the whole workflow
 
-* K8S API -> WebHook Broker w/TLS -> OpenFaaS Gateway (w/HTTP)
+* K8S API -> WebHook Broker w/TLS -> OpenFaaS Gateway (w/HTTP) --> OpenFaaS Function 
 
 * The purpose of this PoC is that to validate that pods has required `labels`. Which means you must have that labels:
 
