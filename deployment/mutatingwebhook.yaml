@@ -14,9 +14,9 @@ webhooks:
       caBundle: ${CA_BUNDLE}
     rules:
       - operations: [ "CREATE" ]
-        apiGroups: [""]
+        apiGroups: ["apps"]
         apiVersions: ["v1"]
-        resources: ["pods"]
+        resources: ["deployments"]
     namespaceSelector:
       matchLabels:
         admission-webhook-example: enabled
