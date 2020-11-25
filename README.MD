@@ -120,7 +120,15 @@ $ kubectl get deployments busybox -ojsonpath='{.spec.template.spec.containers[?(
 {"limits":{"cpu":"125Mi","memory":"75Mi"},"requests":{"cpu":"100Mi","memory":"50Mi"}}
 ```
 
-## 6. References
+## Cleanup
+
+* Once you completed all the steps, you can easily remove the demo env.
+
+```sh
+$ kind delete cluster
+```
+
+## 7. References
 * https://appfleet.com/blog/create-serverless-functions-with-openfaas/
 * https://github.com/didil/k8s-hello-mutating-webhook
 * https://medium.com/@didil/building-a-kubernetes-mutating-admission-webhook-7e48729523ed
