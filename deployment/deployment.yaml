@@ -17,7 +17,7 @@ spec:
       serviceAccountName: admission-webhook-example-sa
       containers:
         - name: admission-webhook-example
-          image: devopps/admission-webhook-example:v3
+          image: devopps/admission-webhook-example:v1
           imagePullPolicy: IfNotPresent
           env:
             - name: FUNCTION_NAME

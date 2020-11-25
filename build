@@ -1,7 +1,17 @@
 #!/bin/bash
 
 : ${DOCKER_USER:? required}
+DOCKER_PUSH=false
 
+for arg in "$@"
+do
+    case $arg in
+        -p=*|--push=*)
+        DOCKER_PUSH="${arg#*=}"
+        shift
+        ;;
+    esac
+done
 export GO111MODULE=on 
 export GOPROXY=https://goproxy.cn
 # build webhook
@@ -9,5 +19,4 @@ CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o admission-webhook-exa
 # build docker image
 docker build --no-cache -t ${DOCKER_USER}/admission-webhook-example:v1 .
 rm -rf admission-webhook-example
-
-docker push ${DOCKER_USER}/admission-webhook-example:v1
+if [ "$DOCKER_PUSH" = "true" ]; then docker push ${DOCKER_USER}/admission-webhook-example:v1; else echo "Push skipped"; fi

@@ -3,14 +3,15 @@ package function
 import (
 	"encoding/json"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io/ioutil"
+	corev1 "k8s.io/api/core/v1"
+	"net/http"
+
+	log "github.com/sirupsen/logrus"
 	"k8s.io/api/admission/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net/http"
 )
 
 type Patches []Patch
@@ -61,27 +62,28 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 		//TODO: check init container
 
 		memoryRequest, _ := resource.ParseQuantity("50Mi")
-		memoryLimit, _ := resource.ParseQuantity("75Mi")
 		cpuRequest, _ := resource.ParseQuantity("100Mi")
+
+		memoryLimit, _ := resource.ParseQuantity("75Mi")
 		cpuLimit, _ := resource.ParseQuantity("125Mi")
+
+		resources := corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    cpuLimit,
+				corev1.ResourceMemory: memoryLimit,
+			},
+
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    cpuRequest,
+				corev1.ResourceMemory: memoryRequest,
+			},
+		}
 
 		for i, c := range deployment.Spec.Template.Spec.Containers {
 			r, l := c.Resources.Requests, c.Resources.Limits
 
-			//Requests
-			if r.Memory() == nil {
-				patches.addPatch(i, memoryRequest, "requests", "memory")
-			}
-			if r.Cpu() == nil {
-				patches.addPatch(i, cpuRequest, "requests", "cpu")
-			}
-
-			//Limits
-			if l.Memory() == nil {
-				patches.addPatch(i, memoryLimit, "limits", "memory")
-			}
-			if l.Cpu() == nil {
-				patches.addPatch(i, cpuLimit, "limits", "cpu")
+			if len(r) == 0 && len(l) == 0 {
+				patches.addPatch(i, resources)
 			}
 		}
 
@@ -110,54 +112,10 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (p *Patches) addPatch(index int, request resource.Quantity, resType, specType string) {
+func (p *Patches) addPatch(index int, resources corev1.ResourceRequirements) {
 	*p = append(*p, Patch{
 		Op:    "add",
-		Path:  fmt.Sprintf("/spec/template/spec/containers/%d/resources/%s/%s", index, resType, specType),
-		Value: request,
+		Path:  fmt.Sprintf("/spec/template/spec/containers/%d/resources", index),
+		Value: resources,
 	})
-}
-
-func (p *Patches) addVolumes(pod *corev1.Pod, volumes []corev1.Volume) {
-	first := len(pod.Spec.Volumes) == 0
-	path := "/spec/volumes"
-	var value interface{}
-	for _, v := range volumes {
-		value = v
-		tempPath := path
-		if first {
-			first = false
-			value = []corev1.Volume{v}
-		} else {
-			tempPath = path + "/-"
-		}
-
-		*p = append(*p, Patch{
-			Op:    "add",
-			Path:  tempPath,
-			Value: value,
-		})
-	}
-}
-
-func (p *Patches) addVolumeMounts(pod *corev1.Pod, vms []corev1.VolumeMount) {
-	first := len(pod.Spec.Containers[0].VolumeMounts) == 0
-	path := "/spec/containers/0/volumeMounts"
-	var value interface{}
-	for _, vm := range vms {
-		value = vm
-		tempPath := path
-		if first {
-			first = false
-			value = []corev1.VolumeMount{vm}
-		} else {
-			tempPath = path + "/-"
-		}
-
-		*p = append(*p, Patch{
-			Op:    "add",
-			Path:  tempPath,
-			Value: value,
-		})
-	}
 }

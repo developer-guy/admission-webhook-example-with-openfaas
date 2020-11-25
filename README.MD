@@ -76,42 +76,48 @@ $ faas-cli up -f fileinjector.yml # (build-push-deploy) make sure you are using 
 
 ## 5. Testing the whole workflow
 
-* K8S API -> WebHook Broker w/TLS -> OpenFaaS Gateway (w/HTTP) --> OpenFaaS Function
+#### K8S API -> WebHook Broker w/TLS -> OpenFaaS Gateway (w/HTTP) --> OpenFaaS Function
 
-* The purpose of this PoC is that to add a simple volume + volumeMount to the pod:
+* The purpose of this PoC is the webhook will set the default limit/request if the containers within the Deployment does not have resources.
 
-* First, we need to create a configmap to be able to mount a file to the Pod:
+* First, check the [deployment](deployment/busybox.yaml) manifest and see there is no resources defined for the container.
 
 ```sh
-$ cat functions/fileinjector/hello-openfaas.txt
-
-  _  _     _ _        ___                 ___          ___
- | || |___| | |___   / _ \ _ __  ___ _ _ | __|_ _ __ _/ __|
- | __ / -_) | / _ \ | (_) | '_ \/ -_) ' \| _/ _` / _` \__ \
- |_||_\___|_|_\___/  \___/| .__/\___|_||_|_|\__,_\__,_|___/
-                          |_|
+apiersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox
+  namespace: default
+  labels:
+    app: busybox
+spec:
+  selector:
+    matchLabels:
+      app: busybox
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: busybox
+    spec:
+      containers:
+        - name: busybox
+          image: busybox
+          command: [ "/bin/sh" ]
+          args: [ "-c", "while true; do cat /etc/config/hello-openfaas.txt; sleep 2; done" ]
 ```
 
-```
-$ kubectl create hello-configmap --from-file=functions/fileinjector/hello-openfaas.txt
-```
-
-* Now , you can apply the Pod manifest, once you done, you will notice that Pod includes a volume + volumeMount additional to the manifest you wrote
+* Then, you can apply the Deployment manifest.After doing this, you will notice that container resources are injected by the mutating webhook with the default values defined by the mutating webhook.
 
 ```sh
 $ kubectl apply -f busybox.yaml
 ```
 
-* Check the logs of the Pod, you will see "Hello OpenFaaS" text.
+* Check the YAML of the Deployment, you will see the default resources.
 
 ```sh
-$ kubectl logs -f busybox
-
-  _  _     _ _        ___                 ___          ___
- | || |___| | |___   / _ \ _ __  ___ _ _ | __|_ _ __ _/ __|
- | __ / -_) | / _ \ | (_) | '_ \/ -_) ' \| _/ _` / _` \__ \
- |_||_\___|_|_\___/  \___/| .__/\___|_||_|_|\__,_\__,_|___/
-                          |_|
+$ kubectl get deployments busybox -ojsonpath='{.spec.template.spec.containers[?(@.name=="busybox")].resources}'
+{"limits":{"cpu":"125Mi","memory":"75Mi"},"requests":{"cpu":"100Mi","memory":"50Mi"}}
 ```
 
 ## 6. References
